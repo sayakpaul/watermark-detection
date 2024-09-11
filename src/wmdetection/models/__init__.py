@@ -50,7 +50,10 @@ def get_resnext_model(name):
 
 
 def get_watermarks_detection_model(
-    name, device="cuda:0", fp16=True, pretrained=True, cache_dir="/tmp/watermark-detection"
+    name,
+    device="cuda:0",
+    fp16=True,
+    pretrained=True,
 ):
     assert name in MODELS, f"Unknown model name: {name}"
     assert not (fp16 and name.startswith("convnext")), "Can`t use fp16 mode with convnext models"
@@ -59,8 +62,8 @@ def get_watermarks_detection_model(
     model_ft, detector_transforms = config["constructor"](name)
 
     if pretrained:
-        hf_hub_download(repo_id=config["repo_id"], filename=config["filename"], cache_dir=cache_dir)
-        weights = torch.load(os.path.join(cache_dir, config["filename"]), device, weights_only=True)
+        path = hf_hub_download(repo_id=config["repo_id"], filename=config["filename"])
+        weights = torch.load(path, device, weights_only=True)
         model_ft.load_state_dict(weights)
 
     if fp16:

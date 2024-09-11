@@ -24,7 +24,7 @@ def list_images(folder_path):
 def read_image_rgb(path):
     pil_img = Image.open(path)
     pil_img.load()
-    if pil_img.format is "PNG" and pil_img.mode is not "RGBA":
+    if pil_img.format == "PNG" and pil_img.mode != "RGBA":
         pil_img = pil_img.convert("RGBA")
     pil_img = pil_img.convert("RGB")
     return pil_img

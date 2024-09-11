@@ -98,7 +98,7 @@ class ConvNeXt(nn.Module):
             self.downsample_layers.append(downsample_layer)
 
         self.stages = nn.ModuleList()  # 4 feature resolution stages, each consisting of multiple residual blocks
-        dp_rates = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
+        dp_rates = [x for x in torch.linspace(0, drop_path_rate, sum(depths))]
         cur = 0
         for i in range(4):
             stage = nn.Sequential(
