@@ -1,6 +1,6 @@
 # watermark-detection
 
-_This is a dirty fork of https://github.com/boomb0om/watermark-detection to accommodate ONNX inference on CPU. Jump to [this section](#onnx-usage-only-for-convnext-tiny) to get started._ 
+_This is a dirty fork of https://github.com/boomb0om/watermark-detection to accommodate ONNX inference on CPU. Jump to [this section](#onnx-usage-limited-to-convnext-tiny) to get started._ 
 
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
