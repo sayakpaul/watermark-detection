@@ -1,6 +1,6 @@
 # watermark-detection
 
-This is a fork of https://github.com/boomb0om/watermark-detection to accommodate ONNX inference on CPU.
+_This is a dirty fork of https://github.com/boomb0om/watermark-detection to accommodate ONNX inference on CPU. Jump to [this section](#onnx-usage-only-for-convnext-tiny) to get started._ 
 
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
@@ -58,21 +58,27 @@ for result in results:
     print('watermarked' if result else 'clean')
 ```
 
-### ONNX usage (only for ConvNeXT-tiny)
+### ONNX usage (limited to ConvNeXT-tiny)
 
 First, generate the ONNX model:
 
 ```python
-from wmdetection.models import get_watermarks_detection_model
+from wmdetection.models import get_watermarks_detection_model, export_model
 
 model, _ = get_watermarks_detection_model("convnext-tiny", device="cpu", fp16=False)
 model_path = export_model(model)
 print(model_path)
 ```
 
-This should generate the ONNX file called "convnext.onnx". 
+This should generate the ONNX file called "convnext.onnx" (109MB is size). 
 
-Then run `python run_with_onnx.py`. 
+Then run `python run_with_onnx.py`. Should print:
+
+```bash
+watermarked
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:07<00:00,  3.55s/it]
+['watermarked', 'watermarked', 'watermarked', 'watermarked', 'clean', 'clean', 'clean', 'clean']
+```
 
 ## Test dataset
 
