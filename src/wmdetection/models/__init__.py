@@ -8,6 +8,31 @@ from .convnext import ConvNeXt
 from wmdetection.utils import FP16Module
 
 
+def export_model(model):
+    model_path = "convnext.onnx"
+    model.eval()
+    dummy_input = torch.randn(1, 3, 256, 256)
+    # Define dynamic axes
+    dynamic_axes = {
+        "input": {
+            0: "batch_size",
+            2: "height",
+            3: "width",
+        },  # Variable batch size, height and width
+        "output": {0: "batch_size"},
+    }
+    torch.onnx.export(
+        model,
+        dummy_input,
+        model_path,
+        dynamic_axes=dynamic_axes,
+        input_names=["input"],
+        output_names=["output"],
+        verbose=True,
+    )
+    return model_path
+
+
 def get_convnext_model(name):
     if name == "convnext-tiny":
         model_ft = ConvNeXt(depths=[3, 3, 9, 3], dims=[96, 192, 384, 768])
@@ -49,30 +74,26 @@ def get_resnext_model(name):
     return model_ft, detector_transforms
 
 
-def get_watermarks_detection_model(
-    name,
-    device="cuda:0",
-    fp16=True,
-    pretrained=True,
-):
+def get_watermarks_detection_model(name, device="cuda:0", fp16=True, pretrained=True, return_transforms_only=False):
     assert name in MODELS, f"Unknown model name: {name}"
     assert not (fp16 and name.startswith("convnext")), "Can`t use fp16 mode with convnext models"
     config = MODELS[name]
 
     model_ft, detector_transforms = config["constructor"](name)
 
-    if pretrained:
+    if pretrained and not return_transforms_only:
         path = hf_hub_download(repo_id=config["repo_id"], filename=config["filename"])
         weights = torch.load(path, device, weights_only=True)
         model_ft.load_state_dict(weights)
 
-    if fp16:
+    if fp16 and not return_transforms_only:
         model_ft = FP16Module(model_ft)
 
-    model_ft.eval()
-    model_ft = model_ft.to(device)
+    if not return_transforms_only:
+        model_ft.eval()
+        model_ft = model_ft.to(device)
 
-    return model_ft, detector_transforms
+    return (model_ft, detector_transforms) if not return_transforms_only else detector_transforms
 
 
 MODELS = {
