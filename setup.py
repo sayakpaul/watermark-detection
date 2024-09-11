@@ -1,4 +1,3 @@
-
 from setuptools import find_packages, setup
 
 
@@ -8,7 +7,7 @@ setup(
     description="Simple watermark detection.",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    install_requires=["torch", "numpy"],
+    install_requires=["torch", "numpy", "timm", "huggingface_hub"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved ::Apache Software License",
