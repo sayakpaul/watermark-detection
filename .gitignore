@@ -3,3 +3,4 @@ __pycache__/
 dataset/*.csv
 dataset/watermarks-validation/
 weights/
+*.egg-info
