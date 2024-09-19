@@ -39,16 +39,21 @@ class ImageDataset(Dataset):
 
 
 class WatermarksPredictor:
-    def __init__(self, wm_model, classifier_transforms, device, use_onnx=False):
-        if use_onnx and not os.path.exists(wm_model):
+    def __init__(self, wm_model, classifier_transforms, device):
+        if not os.path.exists(wm_model):
             raise ValueError(f"Must provide a valid path to the ONNX model file got {wm_model}.")
 
+        if wm_model.endswith(".onnx"):
+            self.use_onnx = True
+        else:
+            self.use_onnx = False
+
         self.wm_model = wm_model
-        if not use_onnx:
+        if not self.use_onnx:
             self.wm_model.eval()
         self.classifier_transforms = classifier_transforms
         self.device = device
-        if use_onnx:
+        if self.use_onnx:
             import onnxruntime
 
             logger.info("Setting device to CPU because `use_onnx` is True.")
@@ -58,7 +63,6 @@ class WatermarksPredictor:
             logger.info("ONNX session initialized.")
             self.input_name = self.session.get_inputs()[0].name
             self.output_name = self.session.get_outputs()[0].name
-            self.use_onnx = use_onnx
             self.map = {0: "clean", 1: "watermarked"}
 
     def predict_image(self, pil_image):
@@ -68,16 +72,22 @@ class WatermarksPredictor:
         result = torch.max(outputs, 1)[1].cpu().reshape(-1).tolist()[0]
         return result
 
-    def predict_image_with_onnx(self, pil_image):
+    def predict_image_with_onnx(self, pil_image, return_probs=False):
         if isinstance(pil_image, PIL.Image.Image):
             input_data = self.classifier_transforms(pil_image).float().unsqueeze(0).numpy()
         else:
             input_data = pil_image.numpy()
         result = self.session.run([self.output_name], {self.input_name: input_data})[0]
-        predicted_classes = np.argmax(result, axis=-1).tolist()
-        return predicted_classes
+        if return_probs:
+            return torch.nn.functional.softmax(torch.from_numpy(result), dim=-1).numpy()
+        else:
+            predicted_classes = np.argmax(result, axis=-1).tolist()
+            return predicted_classes
 
-    def run(self, files, num_workers=1, bs=8, pbar=True):
+    def run(self, files, num_workers=1, bs=8, pbar=True, return_probs=False):
+        if return_probs and not self.use_onnx:
+            raise ValueError("`return_probs` can only be True when using an ONNX model.")
+
         eval_dataset = ImageDataset(files, self.classifier_transforms)
         loader = DataLoader(
             eval_dataset,
@@ -96,7 +106,11 @@ class WatermarksPredictor:
                     outputs = self.wm_model(batch.to(self.device))
                     result.extend(torch.max(outputs, 1)[1].cpu().reshape(-1).tolist())
             else:
-                output = self.predict_image_with_onnx(batch)
-                result.extend([self.map[pred_class] for pred_class in output])
+                output = self.predict_image_with_onnx(batch, return_probs)
+                if return_probs:
+                    result.extend(output)
+                else:
+                    result.extend([self.map[pred_class] for pred_class in output])
 
-        return result
+        # Only return the softmax scores associated to watermark
+        return np.stack(result)[:, 1] if return_probs else result
