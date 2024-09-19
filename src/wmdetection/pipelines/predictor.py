@@ -39,7 +39,7 @@ class ImageDataset(Dataset):
 
 
 class WatermarksPredictor:
-    def __init__(self, wm_model, classifier_transforms, device):
+    def __init__(self, wm_model, classifier_transforms, device, **kwargs):
         if not os.path.exists(wm_model):
             raise ValueError(f"Must provide a valid path to the ONNX model file got {wm_model}.")
 
@@ -59,7 +59,9 @@ class WatermarksPredictor:
             logger.info("Setting device to CPU because `use_onnx` is True.")
             self.device = "cpu"
 
-            self.session = onnxruntime.InferenceSession(wm_model)
+            sess_options = kwargs.get("session_options", None)
+
+            self.session = onnxruntime.InferenceSession(wm_model, sess_options=sess_options, providers=['CPUExecutionProvider'])
             logger.info("ONNX session initialized.")
             self.input_name = self.session.get_inputs()[0].name
             self.output_name = self.session.get_outputs()[0].name
@@ -88,29 +90,38 @@ class WatermarksPredictor:
         if return_probs and not self.use_onnx:
             raise ValueError("`return_probs` can only be True when using an ONNX model.")
 
-        eval_dataset = ImageDataset(files, self.classifier_transforms)
-        loader = DataLoader(
-            eval_dataset,
-            sampler=torch.utils.data.SequentialSampler(eval_dataset),
-            batch_size=bs,
-            drop_last=False,
-            num_workers=num_workers,
-        )
-        if pbar:
-            loader = tqdm(loader)
+        if isinstance(files, list):
+            eval_dataset = ImageDataset(files, self.classifier_transforms)
+            loader = DataLoader(
+                eval_dataset,
+                sampler=torch.utils.data.SequentialSampler(eval_dataset),
+                batch_size=bs,
+                drop_last=False,
+                num_workers=num_workers,
+            )
+            if pbar:
+                loader = tqdm(loader)
 
-        result = []
-        for batch in loader:
-            if not self.use_onnx:
-                with torch.no_grad():
-                    outputs = self.wm_model(batch.to(self.device))
-                    result.extend(torch.max(outputs, 1)[1].cpu().reshape(-1).tolist())
-            else:
-                output = self.predict_image_with_onnx(batch, return_probs)
-                if return_probs:
-                    result.extend(output)
+            result = []
+            for batch in loader:
+                if not self.use_onnx:
+                    with torch.no_grad():
+                        outputs = self.wm_model(batch.to(self.device))
+                        result.extend(torch.max(outputs, 1)[1].cpu().reshape(-1).tolist())
                 else:
-                    result.extend([self.map[pred_class] for pred_class in output])
+                    output = self.predict_image_with_onnx(batch, return_probs)
+                    if return_probs:
+                        result.extend(output)
+                    else:
+                        result.extend([self.map[pred_class] for pred_class in output])
 
-        # Only return the softmax scores associated to watermark
-        return np.stack(result)[:, 1] if return_probs else result
+            # Only return the softmax scores associated to watermark
+            return np.stack(result)[:, 1] if return_probs else result
+        
+        elif isinstance(files, torch.Tensor):
+            output = self.predict_image_with_onnx(files, return_probs)            
+            if return_probs:
+                # Only return the softmax scores associated to watermark
+                return output[:, 1]
+            else:
+                return [self.map[pred_class] for pred_class in output]
