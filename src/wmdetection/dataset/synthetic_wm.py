@@ -1,9 +1,6 @@
-import os
 from PIL import Image
 import numpy as np
-import pandas as pd
 import cv2
-import string
 import random
 
 CV2_FONTS = [
