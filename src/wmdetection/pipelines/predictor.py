@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import logging
-from wmdetection.utils import read_image_rgb
+from ..utils import read_image_rgb
 
 
 logger = logging.getLogger(__name__)

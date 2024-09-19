@@ -4,7 +4,7 @@ from torchvision import models, transforms
 from huggingface_hub import hf_hub_download
 
 from .convnext import ConvNeXt
-from wmdetection.utils import FP16Module
+from ..utils import FP16Module
 
 
 def export_model(model):
